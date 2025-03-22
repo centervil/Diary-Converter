@@ -1,160 +1,104 @@
-# 開発日記変換ツール (Diary Converter)
+# Diary Converter
 
-開発日記をZenn公開用の記事に変換するツールです。Gemini APIを使用して、開発中の会話ログを読みやすい技術記事に変換します。
+開発日記をZenn記事に変換するためのツールです。Gemini APIを使用して、開発日記の内容を自動的にZenn記事のフォーマットに変換します。
 
 ## 機能
 
-- マークダウン形式の開発日記を読み込み
-- Gemini APIを使用して内容を構造化・改善
-- Zenn公開用の形式に変換（frontmatter付き）
-- 変換結果を指定先に保存
+- 開発日記からZenn記事への自動変換
+- カスタマイズ可能なテンプレート
+- 開発サイクル記事との連携
+- デバッグモードによる詳細なログ出力
 
-## インストール方法
+## インストール
 
-### リポジトリのクローン
+### 依存関係
 
+- Python 3.10以上
+- Gemini APIキー
+
+### セットアップ
+
+1. リポジトリをクローン:
 ```bash
-git clone https://github.com/[username]/diary-converter.git
-cd diary-converter
+git clone https://github.com/centervil/Diary-Converter.git
+cd Diary-Converter
 ```
 
-### 依存関係のインストール
-
+2. 依存パッケージをインストール:
 ```bash
 pip install -r requirements.txt
 ```
 
-## 使い方
+3. 環境変数の設定:
+```bash
+export GOOGLE_API_KEY="your-api-key"
+```
 
-### 基本的な使用方法
+## 使用方法
+
+### コマンドライン
 
 ```bash
-python diary_converter.py path/to/source/diary.md path/to/destination/article.md
+python -m diary_converter.diary_converter \
+  input.md \
+  output.md \
+  --model "gemini-2.0-flash-001" \
+  --template "templates/zenn_template.md" \
+  --debug
 ```
 
-### 詳細オプション
-
-```bash
-python diary_converter.py path/to/source/diary.md path/to/destination/article.md \
-  --model gemini-2.0-flash-001 \
-  --debug \
-  --template path/to/template.md \
-  --cycle-article https://zenn.dev/username/articles/your-article-id
-```
-
-#### オプション説明
-
-- `--model` : 使用するGeminiモデル (デフォルト: gemini-2.0-flash-001)
-- `--debug` : デバッグモードを有効にする
-- `--template` : 使用するテンプレートファイルのパス (デフォルト: Documents/zenn_template.md)
-- `--cycle-article` : 開発サイクルの紹介記事へのリンク
-
-### 環境変数の設定
-
-Gemini APIキーを環境変数に設定してください：
-
-```bash
-export GOOGLE_API_KEY=your_api_key_here
-```
-
-## Docker環境での実行
-
-### イメージのビルド
-
-```bash
-docker build -t diary-converter .
-```
-
-### コンテナの実行
-
-```bash
-docker run -v $(pwd)/input:/app/input -v $(pwd)/output:/app/output \
-  -e GOOGLE_API_KEY=your_api_key_here \
-  diary-converter input/your-diary.md output/your-article.md
-```
-
-### docker-composeでの実行
-
-```bash
-docker-compose build diary-converter
-docker-compose run diary-converter input/your-diary.md output/your-article.md
-```
-
-## CI/CDパイプラインでの使用方法
-
-### GitHubリポジトリからクローンする方法
-
-```yaml
-- name: Clone diary-converter repository
-  uses: actions/checkout@v3
-  with:
-    repository: [username]/diary-converter
-    path: ./diary-converter
-    token: ${{ secrets.DIARY_CONVERTER_TOKEN }}
-
-- name: Run diary-converter
-  run: |
-    cd diary-converter
-    pip install -r requirements.txt
-    python diary_converter.py ../path/to/source.md ../path/to/output.md
-    cd ..
-```
-
-### GitHubリリースからダウンロードする方法
-
-```yaml
-- name: Download diary-converter release
-  run: |
-    mkdir -p ./diary-converter
-    curl -L https://github.com/[username]/diary-converter/releases/latest/download/diary-converter.zip -o diary-converter.zip
-    unzip diary-converter.zip -d ./diary-converter
-
-- name: Run diary-converter
-  run: |
-    cd diary-converter
-    pip install -r requirements.txt
-    python diary_converter.py ../path/to/source.md ../path/to/output.md
-    cd ..
-```
-
-### GitHub Actionsのコンポーザブルアクション
+### GitHub Actions
 
 ```yaml
 - name: Run diary-converter
-  uses: [username]/diary-converter@v1
+  uses: centervil/Diary-Converter@main
   with:
     source_file: path/to/source.md
     destination_file: path/to/output.md
     api_key: ${{ secrets.GOOGLE_API_KEY }}
     model: gemini-2.0-flash-001
     template: path/to/template.md
-    cycle_article: https://zenn.dev/username/articles/your-article-id
+    debug: 'true'
 ```
 
-## 開発に貢献する
+## プロジェクト構造
 
-1. このリポジトリをフォークする
-2. 新しいブランチを作成 (`git checkout -b feature/amazing-feature`)
-3. 変更をコミット (`git commit -m 'Add some amazing feature'`)
-4. ブランチをプッシュ (`git push origin feature/amazing-feature`)
-5. プルリクエストを作成
+```
+Diary-Converter/
+├── .github/
+│   └── workflows/          # GitHub Actionsのワークフローファイル
+├── docs/
+│   ├── project-logs/      # 開発日記
+│   └── api/              # APIドキュメント
+├── src/
+│   └── diary_converter/  # メインのPythonコード
+├── tests/                # テストコード
+├── templates/            # テンプレートファイル
+├── input/               # 入力ファイル用ディレクトリ
+├── output/              # 出力ファイル用ディレクトリ
+├── Dockerfile
+├── docker-compose.yml
+├── requirements.txt
+├── README.md
+└── LICENSE
+```
 
 ## テスト
 
-テストを実行するには：
+### ユニットテスト
+
+```bash
+cd tests
+python -m unittest test_diary_converter.py -v
+```
+
+### 統合テスト
 
 ```bash
 cd tests
 ./run_test.sh
 ```
 
-Docker環境でテストするには：
-
-```bash
-cd tests
-./docker_test.sh
-```
-
 ## ライセンス
 
-このプロジェクトはMITライセンスの下で公開されています。詳細は [LICENSE](LICENSE) ファイルを参照してください。 
+MIT License 

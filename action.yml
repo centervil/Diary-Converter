@@ -1,6 +1,6 @@
 name: 'Diary Converter'
 description: 'Convert development diary logs to Zenn articles'
-author: '[username]'
+author: 'centervil'
 
 inputs:
   source_file:
@@ -45,7 +45,7 @@ runs:
 
     - name: Prepare output directory
       run: |
-        mkdir -p $(dirname ${{ inputs.destination_file }})
+        mkdir -p $(dirname ${{ github.workspace }}/${{ inputs.destination_file }})
       shell: bash
 
     - name: Run Diary Converter
@@ -55,6 +55,7 @@ runs:
         DEBUG_FLAG=""
         if [ "${{ inputs.debug }}" = "true" ]; then
           DEBUG_FLAG="--debug"
+          echo "Debug mode enabled"
         fi
         
         TEMPLATE_ARG=""
@@ -66,11 +67,13 @@ runs:
             # Relative path
             TEMPLATE_ARG="--template ${{ github.workspace }}/${{ inputs.template }}"
           fi
+          echo "Using template: $TEMPLATE_ARG"
         fi
         
         CYCLE_ARTICLE_ARG=""
         if [ -n "${{ inputs.cycle_article }}" ]; then
           CYCLE_ARTICLE_ARG="--cycle-article ${{ inputs.cycle_article }}"
+          echo "Using cycle article: $CYCLE_ARTICLE_ARG"
         fi
         
         export GOOGLE_API_KEY="${{ inputs.api_key }}"
@@ -78,7 +81,7 @@ runs:
         echo "Converting ${{ inputs.source_file }} to ${{ inputs.destination_file }}"
         echo "Using model: ${{ inputs.model }}"
         
-        python diary_converter.py \
+        PYTHONPATH=${{ github.action_path }} python -m diary_converter.diary_converter \
           "${{ github.workspace }}/${{ inputs.source_file }}" \
           "${{ github.workspace }}/${{ inputs.destination_file }}" \
           --model "${{ inputs.model }}" \

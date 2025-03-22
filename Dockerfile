@@ -1,4 +1,4 @@
-FROM python:3.9-slim
+FROM python:3.10-slim
 
 WORKDIR /app
 
@@ -7,14 +7,16 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # アプリケーションコードをコピー
-COPY . .
-
-# 実行権限を付与
-RUN chmod +x diary_converter.py
-RUN chmod +x docker-entrypoint.sh
+COPY src/ /app/src/
+COPY tests/ /app/tests/
+COPY templates/ /app/templates/
 
 # 環境変数の設定
 ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app
 
-# エントリーポイントの設定
-ENTRYPOINT ["/app/docker-entrypoint.sh"] 
+# 作業ディレクトリの設定
+WORKDIR /app
+
+# コマンドの設定
+CMD ["python3"] 

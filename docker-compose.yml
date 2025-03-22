@@ -7,9 +7,10 @@ services:
       dockerfile: Dockerfile
     container_name: diary-converter
     volumes:
-      - ./input:/app/input
-      - ./output:/app/output
+      - ./tests:/app/tests
+      - ./src:/app/src
       - ./templates:/app/templates
     environment:
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
-    entrypoint: ["/app/docker-entrypoint.sh"] 
+      - PYTHONPATH=/app
+    working_dir: /app 
