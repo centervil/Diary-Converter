@@ -81,7 +81,7 @@ runs:
         echo "Converting ${{ inputs.source_file }} to ${{ inputs.destination_file }}"
         echo "Using model: ${{ inputs.model }}"
         
-        PYTHONPATH=${{ github.action_path }} python -m diary_converter.diary_converter \
+        PYTHONPATH=${{ github.action_path }}/src python -m diary_converter.diary_converter \
           "${{ github.workspace }}/${{ inputs.source_file }}" \
           "${{ github.workspace }}/${{ inputs.destination_file }}" \
           --model "${{ inputs.model }}" \
