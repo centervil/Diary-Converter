@@ -1,8 +1,8 @@
 ---
-title: "YYYY-MM-DD [テーマ名]"
-emoji: "絵文字"
-type: "idea"
-topics: ["トピック1", "トピック2", "トピック3"]
+title: "[プロジェクト名] 開発日記 #[連番]: [テーマ名]"
+emoji: "📝"
+type: "tech"
+topics: ["開発日記", "プログラミング", "トピック3"]
 published: false
 ---
 
@@ -10,6 +10,11 @@ published: false
 この記事は[LLM Model名]によって自動生成されています。
 私の毎日の開発サイクルについては、[LLM対話で実現する継続的な開発プロセス](https://zenn.dev/centervil/articles/2025-03-12-development-cycle-introduction)をご覧ください。
 :::
+
+## 関連リンク
+
+- **プロジェクトリポジトリ**: [[プロジェクト名]](https://github.com/centervil/[リポジトリ名])
+- **前回の開発日記**: [前回のタイトル](https://zenn.dev/centervil/articles/[前回の記事スラッグ])
 
 # [テーマ名]
 
@@ -174,4 +179,4 @@ function example() {
 4. 読者にとって価値のある情報を優先
 5. 全体の流れを整えて一貫性のある記事に仕上げる
 6. 具体的な例や図表を追加して理解を促進
-7. 読者の興味を引く導入と締めくくりを工夫 
+7. 読者の興味を引く導入と締めくくりを工夫

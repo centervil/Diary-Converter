@@ -28,6 +28,18 @@ inputs:
     description: 'Enable debug mode'
     required: false
     default: 'false'
+  project_name:
+    description: 'Project name for article title'
+    required: false
+    default: ''
+  issue_number:
+    description: 'Issue number for article title'
+    required: false
+    default: ''
+  prev_article:
+    description: 'Previous article slug for related links'
+    required: false
+    default: ''
 
 runs:
   using: 'composite'
@@ -76,6 +88,24 @@ runs:
           echo "Using cycle article: $CYCLE_ARTICLE_ARG"
         fi
         
+        PROJECT_NAME_ARG=""
+        if [ -n "${{ inputs.project_name }}" ]; then
+          PROJECT_NAME_ARG="--project-name ${{ inputs.project_name }}"
+          echo "Using project name: $PROJECT_NAME_ARG"
+        fi
+        
+        ISSUE_NUMBER_ARG=""
+        if [ -n "${{ inputs.issue_number }}" ]; then
+          ISSUE_NUMBER_ARG="--issue-number ${{ inputs.issue_number }}"
+          echo "Using issue number: $ISSUE_NUMBER_ARG"
+        fi
+        
+        PREV_ARTICLE_ARG=""
+        if [ -n "${{ inputs.prev_article }}" ]; then
+          PREV_ARTICLE_ARG="--prev-article ${{ inputs.prev_article }}"
+          echo "Using previous article: $PREV_ARTICLE_ARG"
+        fi
+        
         export GOOGLE_API_KEY="${{ inputs.api_key }}"
         
         echo "Converting ${{ inputs.source_file }} to ${{ inputs.destination_file }}"
@@ -85,7 +115,7 @@ runs:
           "${{ github.workspace }}/${{ inputs.source_file }}" \
           "${{ github.workspace }}/${{ inputs.destination_file }}" \
           --model "${{ inputs.model }}" \
-          $DEBUG_FLAG $TEMPLATE_ARG $CYCLE_ARTICLE_ARG
+          $DEBUG_FLAG $TEMPLATE_ARG $CYCLE_ARTICLE_ARG $PROJECT_NAME_ARG $ISSUE_NUMBER_ARG $PREV_ARTICLE_ARG
       shell: bash
 
     - name: Verify Output
@@ -101,4 +131,4 @@ runs:
 
 branding:
   icon: 'book'
-  color: 'blue' 
+  color: 'blue'

@@ -17,11 +17,15 @@ import re
 class DiaryConverter:
     """開発日記をZenn公開用の記事に変換するクラス"""
 
-    def __init__(self, model="gemini-2.0-flash-001", template_path="./templates/zenn_template.md", debug=False):
+    def __init__(self, model="gemini-2.0-flash-001", template_path="./templates/zenn_template.md", 
+                 debug=False, project_name=None, issue_number=None, prev_article_slug=None):
         """初期化"""
         self.model_name = model
         self.template_path = template_path
         self.debug = debug
+        self.project_name = project_name  # プロジェクト名
+        self.issue_number = issue_number  # 連番（Issue番号）
+        self.prev_article_slug = prev_article_slug  # 前回の記事スラッグ
         self.setup_api()
 
     def setup_api(self):
@@ -137,8 +141,10 @@ class DiaryConverter:
         theme_name = theme.replace("-", " ").title()
 
         # frontmatterテンプレート
+        project_name = self.project_name or "プロジェクト"
+        issue_number = self.issue_number or "1"
         frontmatter_template = f"""---
-title: "{date} {theme_name}"
+title: "{project_name} 開発日記 #{issue_number}: {theme_name}"
 emoji: "{template_fm.get('emoji', '📝')}"
 type: "{template_fm.get('type', 'tech')}"
 topics: {template_fm.get('topics', ['開発日記', 'プログラミング'])}
@@ -150,6 +156,18 @@ published: {str(template_fm.get('published', False)).lower()}
 {llm_model_info}
 {cycle_article_info}
 :::"""
+
+        # 関連リンクセクションテンプレート
+        repo_name = self.project_name or "[リポジトリ名]"
+        repo_link = f"https://github.com/centervil/{repo_name}"
+        prev_article_link = f"https://zenn.dev/centervil/articles/{self.prev_article_slug}" if self.prev_article_slug else "https://zenn.dev/centervil/articles/[前回の記事スラッグ]"
+        prev_title = "前回のタイトル"
+        
+        related_links_section = f"""## 関連リンク
+
+- **プロジェクトリポジトリ**: [{project_name}]({repo_link})
+- **前回の開発日記**: [{prev_title}]({prev_article_link})
+"""
 
         prompt = f"""以下の開発日記を、Zenn公開用の記事に変換してください。
 
@@ -168,6 +186,10 @@ published: {str(template_fm.get('published', False)).lower()}
 6. frontmatterの直後に以下のメッセージボックスを追加してください：
 
 {message_box_template}
+
+7. メッセージボックスの直後に以下の関連リンクセクションを追加してください：
+
+{related_links_section}
 
 # テンプレート構造
 以下のテンプレート構造に従って記事を作成してください。各セクションの目的と内容を理解し、開発日記の内容に合わせて適切に変換してください：
@@ -283,13 +305,19 @@ def main():
     parser.add_argument("--debug", action="store_true", help="デバッグモードを有効にする")
     parser.add_argument("--template", default="./templates/zenn_template.md", help="使用するテンプレートファイルのパス")
     parser.add_argument("--cycle-article", default="", help="開発サイクルの紹介記事へのリンク")
+    parser.add_argument("--project-name", default="", help="プロジェクト名")
+    parser.add_argument("--issue-number", default="", help="連番（Issue番号）")
+    parser.add_argument("--prev-article", default="", help="前回の記事スラッグ")
     args = parser.parse_args()
 
     try:
         converter = DiaryConverter(
             model=args.model,
             template_path=args.template,
-            debug=args.debug
+            debug=args.debug,
+            project_name=args.project_name,
+            issue_number=args.issue_number,
+            prev_article_slug=args.prev_article
         )
         converter.convert(args.source, args.destination, args.cycle_article)
     except Exception as e:
