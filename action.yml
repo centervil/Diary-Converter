@@ -1,6 +1,18 @@
 name: 'Diary Converter'
-description: 'Convert development diary logs to Zenn articles'
+description: 'Convert development diary logs to Zenn articles with optimized formatting for project documentation'
 author: 'centervil'
+
+# Example usage:
+# - name: Convert Development Diary
+#   uses: centervil/Diary-Converter@main
+#   with:
+#     source_file: 'dev-records/2025-03-26-development.md'
+#     destination_file: 'articles/2025-03-26-dev-diary.md'
+#     api_key: ${{ secrets.GOOGLE_API_KEY }}
+#     model: 'gemini-2.0-flash-001'
+#     project_name: 'Diary-Converter'
+#     issue_number: '1'
+#     prev_article: 'dev-diary'
 
 inputs:
   source_file:
@@ -29,15 +41,15 @@ inputs:
     required: false
     default: 'false'
   project_name:
-    description: 'Project name for article title'
+    description: 'Project name for article title format "[Project Name] 開発日記 #[Issue Number]: [Theme]"'
     required: false
-    default: ''
+    default: 'プロジェクト'
   issue_number:
-    description: 'Issue number for article title'
+    description: 'Sequential number for article title (e.g. issue number or article sequence)'
     required: false
-    default: ''
+    default: '1'
   prev_article:
-    description: 'Previous article slug for related links'
+    description: 'Previous article slug for related links section (without date prefix, e.g. "dev-diary" not "2025-03-25-dev-diary")'
     required: false
     default: ''
 
@@ -64,12 +76,14 @@ runs:
       run: |
         cd ${{ github.action_path }}
         
+        # Debug mode flag
         DEBUG_FLAG=""
         if [ "${{ inputs.debug }}" = "true" ]; then
           DEBUG_FLAG="--debug"
           echo "Debug mode enabled"
         fi
         
+        # Template path handling
         TEMPLATE_ARG=""
         if [ -n "${{ inputs.template }}" ]; then
           if [[ "${{ inputs.template }}" == /* ]]; then
@@ -82,35 +96,49 @@ runs:
           echo "Using template: $TEMPLATE_ARG"
         fi
         
+        # Development cycle article link
         CYCLE_ARTICLE_ARG=""
         if [ -n "${{ inputs.cycle_article }}" ]; then
           CYCLE_ARTICLE_ARG="--cycle-article ${{ inputs.cycle_article }}"
           echo "Using cycle article: $CYCLE_ARTICLE_ARG"
         fi
         
+        # Project name for article title format
+        # Example: "[Diary-Converter] 開発日記 #1: テンプレート改善"
         PROJECT_NAME_ARG=""
         if [ -n "${{ inputs.project_name }}" ]; then
           PROJECT_NAME_ARG="--project-name ${{ inputs.project_name }}"
           echo "Using project name: $PROJECT_NAME_ARG"
+        else
+          PROJECT_NAME_ARG="--project-name プロジェクト"
+          echo "Using default project name: プロジェクト"
         fi
         
+        # Issue/sequence number for article title
         ISSUE_NUMBER_ARG=""
         if [ -n "${{ inputs.issue_number }}" ]; then
           ISSUE_NUMBER_ARG="--issue-number ${{ inputs.issue_number }}"
           echo "Using issue number: $ISSUE_NUMBER_ARG"
+        else
+          ISSUE_NUMBER_ARG="--issue-number 1"
+          echo "Using default issue number: 1"
         fi
         
+        # Previous article slug for related links section
+        # Example: If previous article is "2025-03-25-dev-diary.md", use "dev-diary"
         PREV_ARTICLE_ARG=""
         if [ -n "${{ inputs.prev_article }}" ]; then
           PREV_ARTICLE_ARG="--prev-article ${{ inputs.prev_article }}"
           echo "Using previous article: $PREV_ARTICLE_ARG"
         fi
         
+        # Set API key
         export GOOGLE_API_KEY="${{ inputs.api_key }}"
         
         echo "Converting ${{ inputs.source_file }} to ${{ inputs.destination_file }}"
         echo "Using model: ${{ inputs.model }}"
         
+        # Run the converter with all parameters
         PYTHONPATH=${{ github.action_path }}/src python -m diary_converter.diary_converter \
           "${{ github.workspace }}/${{ inputs.source_file }}" \
           "${{ github.workspace }}/${{ inputs.destination_file }}" \
@@ -118,10 +146,29 @@ runs:
           $DEBUG_FLAG $TEMPLATE_ARG $CYCLE_ARTICLE_ARG $PROJECT_NAME_ARG $ISSUE_NUMBER_ARG $PREV_ARTICLE_ARG
       shell: bash
 
+    - name: Process Generated Document
+      run: |
+        cd ${{ github.action_path }}
+        
+        # Debug mode flag
+        DEBUG_FLAG=""
+        if [ "${{ inputs.debug }}" = "true" ]; then
+          DEBUG_FLAG="--debug"
+          echo "Debug mode enabled for document processing"
+        fi
+        
+        echo "Processing generated document to fix common LLM output issues..."
+        PYTHONPATH=${{ github.action_path }}/src python -m diary_converter.document_processor \
+          "${{ github.workspace }}/${{ inputs.destination_file }}" \
+          $DEBUG_FLAG
+        
+        echo "Document processing completed"
+      shell: bash
+
     - name: Verify Output
       run: |
         if [ -f "${{ github.workspace }}/${{ inputs.destination_file }}" ]; then
-          echo "✅ Conversion successful: ${{ inputs.destination_file }}"
+          echo "✅ Conversion and processing successful: ${{ inputs.destination_file }}"
           wc -l "${{ github.workspace }}/${{ inputs.destination_file }}"
         else
           echo "❌ Conversion failed: File not created"
