@@ -2,7 +2,7 @@
 set -e
 
 # プロジェクトのルートディレクトリに移動
-cd "$(dirname "$0")/../../.."
+cd "$(dirname "$0")/.."
 
 # APIキーが設定されているか確認
 if [ -z "$GOOGLE_API_KEY" ]; then
@@ -31,15 +31,15 @@ echo "コンテナを実行しています..."
 docker-compose run diary-converter "$INPUT_FILE" "$OUTPUT_FILE" --debug --template "$TEMPLATE_FILE"
 
 # 出力ファイルが生成されたか確認
-if [ -f "tools/diary-converter/$OUTPUT_FILE" ]; then
+if [ -f "$OUTPUT_FILE" ]; then
   echo "テスト成功: 出力ファイルが生成されました"
   echo "出力ファイルの内容:"
   echo "-----------------------------------"
-  cat "tools/diary-converter/$OUTPUT_FILE"
+  cat "$OUTPUT_FILE"
   echo "-----------------------------------"
 else
   echo "テスト失敗: 出力ファイルが生成されませんでした"
   exit 1
 fi
 
-echo "Docker環境でのテストが完了しました" 
+echo "Docker環境でのテストが完了しました"

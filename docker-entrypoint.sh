@@ -20,4 +20,4 @@ OUTPUT_FILE="$2"
 shift 2
 
 # 残りの引数をそのまま渡す
-python /app/diary_converter.py "$INPUT_FILE" "$OUTPUT_FILE" "$@" 
+python -m diary_converter.diary_converter "$INPUT_FILE" "$OUTPUT_FILE" "$@"

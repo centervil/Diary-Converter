@@ -86,50 +86,110 @@ class DiaryConverter:
         theme = os.path.splitext(theme_part)[0]
         return theme
 
-    def generate_prompt(self, content, date, theme, cycle_article_link="", template_content=None):
-        """Gemini APIに送信するプロンプトを生成する"""
-        if not template_content:
-            raise ValueError("テンプレート内容が提供されていません")
-
-        # テンプレートからfrontmatterを抽出
+    def extract_template_sections(self, template_content):
+        """テンプレートから各セクションを抽出する"""
+        # frontmatterを抽出
         try:
             post = frontmatter.loads(template_content)
             template_fm = post.metadata
-
-            if not template_fm:
-                if self.debug:
-                    print("警告: テンプレートからfrontmatterを抽出できませんでした。デフォルト値を使用します。")
-                template_fm = {
-                    "title": f"{date} [テーマ名]",
-                    "emoji": "📝",
-                    "type": "tech",
-                    "topics": ["開発日記", "プログラミング"],
-                    "published": False
-                }
-            elif self.debug:
-                print(f"テンプレートからfrontmatterを抽出しました: {template_fm}")
+            if not template_fm and self.debug:
+                print("警告: テンプレートからfrontmatterを抽出できませんでした。デフォルト値を使用します。")
         except Exception as e:
             if self.debug:
                 print(f"警告: テンプレートからfrontmatterを抽出できませんでした: {e}")
+            template_fm = {}
+
+        # デフォルト値を設定
+        if not template_fm:
             template_fm = {
-                "title": f"{date} [テーマ名]",
+                "title": "[プロジェクト名] 開発日記 #[連番]: [テーマ名]",
                 "emoji": "📝",
                 "type": "tech",
                 "topics": ["開発日記", "プログラミング"],
                 "published": False
             }
 
-        # テンプレートの記述ガイドラインを抽出
+        # メッセージボックスを抽出
+        message_box_match = re.search(r':::message\n(.*?)\n:::', template_content, re.DOTALL)
+        message_box = message_box_match.group(0) if message_box_match else ""
+        
+        # 関連リンクセクションを抽出
+        related_links_match = re.search(r'## 関連リンク\n\n(.*?)(?=\n\n#|\n\n---|\Z)', template_content, re.DOTALL)
+        related_links = related_links_match.group(0) if related_links_match else ""
+        
+        # 記述ガイドラインを抽出
         guidelines_match = re.search(r'## 記述ガイドライン.*', template_content, re.DOTALL)
         guidelines = guidelines_match.group(0) if guidelines_match else ""
-
-        # テンプレートの構造を抽出（frontmatterとガイドライン部分を除く）
+        
+        # 変換プロセスを抽出
+        conversion_process_match = re.search(r'## 開発日記からの変換プロセス.*', template_content, re.DOTALL)
+        conversion_process = conversion_process_match.group(0) if conversion_process_match else ""
+        
+        # テンプレート構造（メインコンテンツ部分）を抽出
+        # frontmatter、メッセージボックス、関連リンク、ガイドライン、変換プロセスを除く
         template_structure = template_content
-        if guidelines_match:
-            template_structure = template_content.split(guidelines_match.group(0))[0]
-
+        
         # frontmatterを除去
         template_structure = re.sub(r'^---\n.*?\n---\n', '', template_structure, flags=re.DOTALL)
+        
+        # メッセージボックスを除去（あれば）
+        if message_box:
+            template_structure = template_structure.replace(message_box, "")
+        
+        # 関連リンクセクションを除去（あれば）
+        if related_links:
+            template_structure = template_structure.replace(related_links, "")
+        
+        # ガイドラインと変換プロセスを除去
+        if guidelines:
+            template_structure = template_structure.split(guidelines)[0]
+        elif conversion_process:
+            template_structure = template_structure.split(conversion_process)[0]
+        
+        # 余分な空行を整理
+        template_structure = re.sub(r'\n{3,}', '\n\n', template_structure.strip())
+        
+        return {
+            "frontmatter": template_fm,
+            "message_box": message_box,
+            "related_links": related_links,
+            "guidelines": guidelines,
+            "conversion_process": conversion_process,
+            "template_structure": template_structure
+        }
+
+    def generate_prompt(self, content, date, theme, cycle_article_link="", template_content=None):
+        """Gemini APIに送信するプロンプトを生成する"""
+        if not template_content:
+            raise ValueError("テンプレート内容が提供されていません")
+
+        # テンプレートから各セクションを抽出
+        template_sections = self.extract_template_sections(template_content)
+        template_fm = template_sections["frontmatter"]
+        guidelines = template_sections["guidelines"]
+        template_structure = template_sections["template_structure"]
+        
+        # テーマ名を設定
+        theme_name = theme.replace("-", " ").title()
+        
+        # プロジェクト名とIssue番号を設定
+        project_name = self.project_name or "プロジェクト"
+        issue_number = self.issue_number or "1"
+        
+        # frontmatterテンプレート
+        # テンプレートのfrontmatterを基に、動的な値を置換
+        title_template = template_fm.get("title", "[プロジェクト名] 開発日記 #[連番]: [テーマ名]")
+        title = title_template.replace("[プロジェクト名]", project_name) \
+                             .replace("[連番]", issue_number) \
+                             .replace("[テーマ名]", theme_name)
+        
+        frontmatter_template = f"""---
+title: "{title}"
+emoji: "{template_fm.get('emoji', '📝')}"
+type: "{template_fm.get('type', 'tech')}"
+topics: {template_fm.get('topics', ['開発日記', 'プログラミング'])}
+published: {str(template_fm.get('published', False)).lower()}
+---"""
 
         # LLMモデル名と開発サイクル紹介記事のリンクを設定
         llm_model_info = f"この記事は{self.model_name}によって自動生成されています。"
@@ -137,33 +197,51 @@ class DiaryConverter:
         if cycle_article_link:
             cycle_article_info = f"私の毎日の開発サイクルについては、{cycle_article_link}をご覧ください。"
 
-        # テーマ名を設定
-        theme_name = theme.replace("-", " ").title()
-
-        # frontmatterテンプレート
-        project_name = self.project_name or "プロジェクト"
-        issue_number = self.issue_number or "1"
-        frontmatter_template = f"""---
-title: "{project_name} 開発日記 #{issue_number}: {theme_name}"
-emoji: "{template_fm.get('emoji', '📝')}"
-type: "{template_fm.get('type', 'tech')}"
-topics: {template_fm.get('topics', ['開発日記', 'プログラミング'])}
-published: {str(template_fm.get('published', False)).lower()}
----"""
-
         # メッセージボックステンプレート
-        message_box_template = f""":::message
+        # テンプレートのメッセージボックスがあれば使用し、なければ新規作成
+        if template_sections["message_box"]:
+            message_box_template = template_sections["message_box"] \
+                .replace("[LLM Model名]", self.model_name)
+            
+            # 開発サイクル記事リンクの置換
+            if cycle_article_link:
+                message_box_template = re.sub(
+                    r'\[LLM対話で実現する継続的な開発プロセス\]\(.*?\)', 
+                    f'[LLM対話で実現する継続的な開発プロセス]({cycle_article_link})', 
+                    message_box_template
+                )
+        else:
+            message_box_template = f""":::message
 {llm_model_info}
 {cycle_article_info}
 :::"""
 
         # 関連リンクセクションテンプレート
-        repo_name = self.project_name or "[リポジトリ名]"
-        repo_link = f"https://github.com/centervil/{repo_name}"
-        prev_article_link = f"https://zenn.dev/centervil/articles/{self.prev_article_slug}" if self.prev_article_slug else "https://zenn.dev/centervil/articles/[前回の記事スラッグ]"
-        prev_title = "前回のタイトル"
-        
-        related_links_section = f"""## 関連リンク
+        # テンプレートの関連リンクセクションがあれば使用し、なければ新規作成
+        if template_sections["related_links"]:
+            repo_name = self.project_name or "[リポジトリ名]"
+            repo_link = f"https://github.com/centervil/{repo_name}"
+            prev_article_link = f"https://zenn.dev/centervil/articles/{self.prev_article_slug}" if self.prev_article_slug else "https://zenn.dev/centervil/articles/[前回の記事スラッグ]"
+            
+            related_links_section = template_sections["related_links"] \
+                .replace("[プロジェクト名]", project_name) \
+                .replace("[リポジトリ名]", repo_name) \
+                .replace("https://github.com/centervil/[リポジトリ名]", repo_link)
+            
+            # 前回の記事リンクの置換
+            if self.prev_article_slug:
+                related_links_section = re.sub(
+                    r'https://zenn.dev/centervil/articles/\[前回の記事スラッグ\]', 
+                    prev_article_link, 
+                    related_links_section
+                )
+        else:
+            repo_name = self.project_name or "[リポジトリ名]"
+            repo_link = f"https://github.com/centervil/{repo_name}"
+            prev_article_link = f"https://zenn.dev/centervil/articles/{self.prev_article_slug}" if self.prev_article_slug else "https://zenn.dev/centervil/articles/[前回の記事スラッグ]"
+            prev_title = "前回のタイトル"
+            
+            related_links_section = f"""## 関連リンク
 
 - **プロジェクトリポジトリ**: [{project_name}]({repo_link})
 - **前回の開発日記**: [{prev_title}]({prev_article_link})
