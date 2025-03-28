@@ -1,20 +1,20 @@
 ---
-title: "[プロジェクト名] 開発日記 #[連番]: [テーマ名]"
+title: "[テーマ名]（開発日記 #[連番]）"
 emoji: "📝"
-type: "idea"
-topics: ["開発日記", "プログラミング", "トピック3"]
+type: "tech"
+topics: ["開発日記", "プログラミング"]
 published: false
 ---
 
 :::message
 この記事は[LLM Model名]によって自動生成されています。
-私の毎日の開発サイクルについては、[LLM対話で実現する継続的な開発プロセス](https://zenn.dev/centervil/articles/2025-03-12-development-cycle-introduction)をご覧ください。
 :::
 
 ## 関連リンク
 
 - **プロジェクトリポジトリ**: [[プロジェクト名]](https://github.com/centervil/[リポジトリ名])
-- **前回の開発日記**: [前回のタイトル](https://zenn.dev/centervil/articles/[前回の記事スラッグ])
+- **前回の開発日記**: [前回の開発日記](https://zenn.dev/centervil/articles/[前回の記事スラッグ])
+- **関連Issue**: [Issue #[Issue番号]](https://github.com/centervil/[リポジトリ名]/issues/[Issue番号])
 
 # [テーマ名]
 

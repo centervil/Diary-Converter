@@ -178,10 +178,9 @@ class DiaryConverter:
         
         # frontmatterテンプレート
         # テンプレートのfrontmatterを基に、動的な値を置換
-        title_template = template_fm.get("title", "[プロジェクト名] 開発日記 #[連番]: [テーマ名]")
-        title = title_template.replace("[プロジェクト名]", project_name) \
-                             .replace("[連番]", issue_number) \
-                             .replace("[テーマ名]", theme_name)
+        title_template = template_fm.get("title", "[テーマ名]（開発日記 #[連番]）")
+        title = title_template.replace("[テーマ名]", theme_name) \
+                             .replace("[連番]", issue_number)
         
         frontmatter_template = f"""---
 title: "{title}"
@@ -191,29 +190,17 @@ topics: {template_fm.get('topics', ['開発日記', 'プログラミング'])}
 published: {str(template_fm.get('published', False)).lower()}
 ---"""
 
-        # LLMモデル名と開発サイクル紹介記事のリンクを設定
+        # LLMモデル名を設定
         llm_model_info = f"この記事は{self.model_name}によって自動生成されています。"
-        cycle_article_info = ""
-        if cycle_article_link:
-            cycle_article_info = f"私の毎日の開発サイクルについては、{cycle_article_link}をご覧ください。"
 
         # メッセージボックステンプレート
         # テンプレートのメッセージボックスがあれば使用し、なければ新規作成
         if template_sections["message_box"]:
             message_box_template = template_sections["message_box"] \
                 .replace("[LLM Model名]", self.model_name)
-            
-            # 開発サイクル記事リンクの置換
-            if cycle_article_link:
-                message_box_template = re.sub(
-                    r'\[LLM対話で実現する継続的な開発プロセス\]\(.*?\)', 
-                    f'[LLM対話で実現する継続的な開発プロセス]({cycle_article_link})', 
-                    message_box_template
-                )
         else:
             message_box_template = f""":::message
 {llm_model_info}
-{cycle_article_info}
 :::"""
 
         # 関連リンクセクションテンプレート
@@ -221,12 +208,19 @@ published: {str(template_fm.get('published', False)).lower()}
         if template_sections["related_links"]:
             repo_name = self.project_name or "[リポジトリ名]"
             repo_link = f"https://github.com/centervil/{repo_name}"
+            
+            # 前回の記事リンクの自動生成
             prev_article_link = f"https://zenn.dev/centervil/articles/{self.prev_article_slug}" if self.prev_article_slug else "https://zenn.dev/centervil/articles/[前回の記事スラッグ]"
+            
+            # 関連IssueのURL
+            issue_url = f"https://github.com/centervil/{repo_name}/issues/{issue_number}"
             
             related_links_section = template_sections["related_links"] \
                 .replace("[プロジェクト名]", project_name) \
                 .replace("[リポジトリ名]", repo_name) \
-                .replace("https://github.com/centervil/[リポジトリ名]", repo_link)
+                .replace("https://github.com/centervil/[リポジトリ名]", repo_link) \
+                .replace("[Issue番号]", issue_number) \
+                .replace("https://github.com/centervil/[リポジトリ名]/issues/[Issue番号]", issue_url)
             
             # 前回の記事リンクの置換
             if self.prev_article_slug:
@@ -239,12 +233,13 @@ published: {str(template_fm.get('published', False)).lower()}
             repo_name = self.project_name or "[リポジトリ名]"
             repo_link = f"https://github.com/centervil/{repo_name}"
             prev_article_link = f"https://zenn.dev/centervil/articles/{self.prev_article_slug}" if self.prev_article_slug else "https://zenn.dev/centervil/articles/[前回の記事スラッグ]"
-            prev_title = "前回のタイトル"
+            issue_url = f"https://github.com/centervil/{repo_name}/issues/{issue_number}"
             
             related_links_section = f"""## 関連リンク
 
 - **プロジェクトリポジトリ**: [{project_name}]({repo_link})
-- **前回の開発日記**: [{prev_title}]({prev_article_link})
+- **前回の開発日記**: [前回の開発日記]({prev_article_link})
+- **関連Issue**: [Issue #{issue_number}]({issue_url})
 """
 
         prompt = f"""以下の開発日記を、Zenn公開用の記事に変換してください。
