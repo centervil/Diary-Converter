@@ -78,11 +78,7 @@ runs:
           echo "Debug mode enabled"
         fi
         
-        # Set template path as environment variable
-        if [ -n "${{ inputs.template }}" ]; then
-          echo "Setting TEMPLATE_PATH environment variable to: ${{ inputs.template }}"
-          echo "TEMPLATE_PATH=${{ inputs.template }}" >> $GITHUB_ENV
-        fi
+        # Template path is passed via env context below
 
         # Detect project name from source file path
         SOURCE_PATH="${{ inputs.source_file }}"
@@ -163,7 +159,8 @@ runs:
         PYTHONPATH=${{ github.action_path }}/src python -m diary_converter.diary_converter "${PYTHON_ARGS[@]}"
       shell: bash
       env:
-        TEMPLATE_PATH: ${{ env.TEMPLATE_PATH }} # Pass the env var to the script step
+        # Pass template path directly using inputs context
+        TEMPLATE_PATH: ${{ inputs.template }} 
 
     - name: Process Generated Document
       run: |
