@@ -78,7 +78,10 @@ runs:
           echo "Debug mode enabled"
         fi
         
-        # Template path is passed via env context below
+        # Construct the full template path using GITHUB_ACTION_PATH and set it as env var
+        FULL_TEMPLATE_PATH="${GITHUB_ACTION_PATH}/${{ inputs.template }}"
+        echo "Setting TEMPLATE_PATH environment variable to: ${FULL_TEMPLATE_PATH}"
+        echo "TEMPLATE_PATH=${FULL_TEMPLATE_PATH}" >> $GITHUB_ENV
 
         # Detect project name from source file path
         SOURCE_PATH="${{ inputs.source_file }}"
@@ -158,9 +161,7 @@ runs:
         # Execute Python script directly with array expansion
         PYTHONPATH=${{ github.action_path }}/src python -m diary_converter.diary_converter "${PYTHON_ARGS[@]}"
       shell: bash
-      env:
-        # Pass template path directly using inputs context
-        TEMPLATE_PATH: ${{ inputs.template }} 
+      # TEMPLATE_PATH is now set via GITHUB_ENV in the script above
 
     - name: Process Generated Document
       run: |
