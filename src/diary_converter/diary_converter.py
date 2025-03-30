@@ -100,9 +100,11 @@ class DiaryConverter:
             template_fm = {}
 
         # デフォルト値を設定
+        # 注: テンプレートファイルに記載されている内容と重複しないよう、
+        # 最小限の情報のみをデフォルト値として設定
         if not template_fm:
             template_fm = {
-                "title": "[プロジェクト名] 開発日記 #[連番]: [テーマ名]",
+                "title": "[テーマ名]（開発日記 #[連番]）",
                 "emoji": "📝",
                 "type": "tech",
                 "topics": ["開発日記", "プログラミング"],
@@ -252,15 +254,15 @@ published: {str(template_fm.get('published', False)).lower()}
 2. 技術的な内容は保持しつつ、読みやすく整理してください
 3. 「所感」セクションを充実させ、開発者の視点や感想を追加してください
 4. マークダウン形式を維持し、コードブロックなどは適切に整形してください
-5. 記事の先頭に以下のfrontmatterを追加してください：
+5. 記事の先頭には、以下のfrontmatterブロックを**寸分違わず正確に**追加してください。他のタイトルや情報を生成しないでください：
 
 {frontmatter_template}
 
-6. frontmatterの直後に以下のメッセージボックスを追加してください：
+6. frontmatterの直後には、以下のメッセージボックスを**提供されたテキストのみで**追加してください。他の情報を追加しないでください：
 
 {message_box_template}
 
-7. メッセージボックスの直後に以下の関連リンクセクションを追加してください：
+7. メッセージボックスの直後には、以下の関連リンクセクションを追加してください：
 
 {related_links_section}
 
@@ -342,7 +344,7 @@ frontmatterを含むマークダウン形式の完全な記事を出力してく
         except Exception as e:
             raise IOError(f"ファイル保存中にエラーが発生しました: {e}")
 
-    def convert(self, source_file, destination_file, cycle_article_link=""):
+    def convert(self, source_file, destination_file):
         """開発日記をZenn記事に変換する"""
         try:
             # 入力ファイルを読み込む
@@ -357,7 +359,7 @@ frontmatterを含むマークダウン形式の完全な記事を出力してく
 
             # Gemini APIで変換
             converted_content = self.convert_with_gemini(
-                content, date, theme, cycle_article_link, template_content
+                content, date, theme, "", template_content
             )
 
             # 変換結果を保存
@@ -377,7 +379,6 @@ def main():
     parser.add_argument("--model", default="gemini-2.0-flash-001", help="使用するGeminiモデル名")
     parser.add_argument("--debug", action="store_true", help="デバッグモードを有効にする")
     parser.add_argument("--template", default="./templates/zenn_template.md", help="使用するテンプレートファイルのパス")
-    parser.add_argument("--cycle-article", default="", help="開発サイクルの紹介記事へのリンク")
     parser.add_argument("--project-name", default="", help="プロジェクト名")
     parser.add_argument("--issue-number", default="", help="連番（Issue番号）")
     parser.add_argument("--prev-article", default="", help="前回の記事スラッグ")
@@ -392,7 +393,7 @@ def main():
             issue_number=args.issue_number,
             prev_article_slug=args.prev_article
         )
-        converter.convert(args.source, args.destination, args.cycle_article)
+        converter.convert(args.source, args.destination)
     except Exception as e:
         print(f"エラー: {e}")
         sys.exit(1)

@@ -32,10 +32,6 @@ inputs:
     description: 'Template file path'
     required: false
     default: './templates/zenn_template.md'
-  cycle_article:
-    description: 'URL to development cycle article'
-    required: false
-    default: ''
   debug:
     description: 'Enable debug mode'
     required: false
@@ -96,33 +92,45 @@ runs:
           echo "Using template: $TEMPLATE_ARG"
         fi
         
-        # Development cycle article link
-        CYCLE_ARTICLE_ARG=""
-        if [ -n "${{ inputs.cycle_article }}" ]; then
-          CYCLE_ARTICLE_ARG="--cycle-article ${{ inputs.cycle_article }}"
-          echo "Using cycle article: $CYCLE_ARTICLE_ARG"
+        
+        # Detect project name from source file path
+        SOURCE_PATH="${{ inputs.source_file }}"
+        PROJECT_NAME="プロジェクト"  # Default value
+        
+        # Extract project name from the path structure
+        # Example: If source_file is "ProjectA/dev-records/2025-03-30-development.md", 
+        # then PROJECT_NAME will be "ProjectA"
+        if [[ "$SOURCE_PATH" == *"/"* ]]; then
+          PROJECT_DIR=$(dirname "$SOURCE_PATH" | cut -d'/' -f1)
+          if [ -n "$PROJECT_DIR" ]; then
+            PROJECT_NAME="$PROJECT_DIR"
+          fi
         fi
         
-        # Project name for article title format
-        # Example: "[Diary-Converter] 開発日記 #1: テンプレート改善"
-        PROJECT_NAME_ARG=""
+        # Override with input parameter if provided
         if [ -n "${{ inputs.project_name }}" ]; then
-          PROJECT_NAME_ARG="--project-name ${{ inputs.project_name }}"
-          echo "Using project name: $PROJECT_NAME_ARG"
-        else
-          PROJECT_NAME_ARG="--project-name プロジェクト"
-          echo "Using default project name: プロジェクト"
+          PROJECT_NAME="${{ inputs.project_name }}"
         fi
         
-        # Issue/sequence number for article title
-        ISSUE_NUMBER_ARG=""
-        if [ -n "${{ inputs.issue_number }}" ]; then
-          ISSUE_NUMBER_ARG="--issue-number ${{ inputs.issue_number }}"
-          echo "Using issue number: $ISSUE_NUMBER_ARG"
-        else
-          ISSUE_NUMBER_ARG="--issue-number 1"
-          echo "Using default issue number: 1"
+        PROJECT_NAME_ARG="--project-name $PROJECT_NAME"
+        echo "Using project name: $PROJECT_NAME"
+        
+        # Determine issue number based on existing articles
+        ISSUE_NUMBER="1"  # Default value
+        
+        # Count existing articles to determine the issue number
+        if [ -d "$(dirname "${{ github.workspace }}/${{ inputs.destination_file }}")" ]; then
+          ARTICLE_COUNT=$(find "$(dirname "${{ github.workspace }}/${{ inputs.destination_file }}")" -type f -name "*.md" | wc -l)
+          ISSUE_NUMBER=$((ARTICLE_COUNT + 1))
         fi
+        
+        # Override with input parameter if provided
+        if [ -n "${{ inputs.issue_number }}" ]; then
+          ISSUE_NUMBER="${{ inputs.issue_number }}"
+        fi
+        
+        ISSUE_NUMBER_ARG="--issue-number $ISSUE_NUMBER"
+        echo "Using issue number: $ISSUE_NUMBER"
         
         # Previous article slug for related links section
         # Example: If previous article is "2025-03-25-dev-diary.md", use "dev-diary"
@@ -143,7 +151,7 @@ runs:
           "${{ github.workspace }}/${{ inputs.source_file }}" \
           "${{ github.workspace }}/${{ inputs.destination_file }}" \
           --model "${{ inputs.model }}" \
-          $DEBUG_FLAG $TEMPLATE_ARG $CYCLE_ARTICLE_ARG $PROJECT_NAME_ARG $ISSUE_NUMBER_ARG $PREV_ARTICLE_ARG
+          $DEBUG_FLAG $TEMPLATE_ARG $PROJECT_NAME_ARG $ISSUE_NUMBER_ARG $PREV_ARTICLE_ARG
       shell: bash
 
     - name: Process Generated Document
