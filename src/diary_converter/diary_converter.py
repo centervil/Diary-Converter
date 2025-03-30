@@ -17,11 +17,12 @@ import re
 class DiaryConverter:
     """開発日記をZenn公開用の記事に変換するクラス"""
 
-    def __init__(self, model="gemini-2.0-flash-001", template_path="./templates/zenn_template.md", 
+    def __init__(self, model="gemini-2.0-flash-001", 
                  debug=False, project_name=None, issue_number=None, prev_article_slug=None):
         """初期化"""
         self.model_name = model
-        self.template_path = template_path
+        # 環境変数からテンプレートパスを取得、なければデフォルト値
+        self.template_path = os.environ.get("TEMPLATE_PATH", "./templates/zenn_template.md") 
         self.debug = debug
         self.project_name = project_name  # プロジェクト名
         self.issue_number = issue_number  # 連番（Issue番号）
@@ -396,16 +397,17 @@ def main():
     parser.add_argument("destination", help="変換先のZenn記事ファイルパス")
     parser.add_argument("--model", default="gemini-2.0-flash-001", help="使用するGeminiモデル名")
     parser.add_argument("--debug", action="store_true", help="デバッグモードを有効にする")
-    parser.add_argument("--template", default="./templates/zenn_template.md", help="使用するテンプレートファイルのパス")
+    # template引数は環境変数経由で渡すため削除
+    # parser.add_argument("--template", default="./templates/zenn_template.md", help="使用するテンプレートファイルのパス") 
     parser.add_argument("--project-name", default="", help="プロジェクト名")
     parser.add_argument("--issue-number", default="", help="連番（Issue番号）")
     parser.add_argument("--prev-article", default="", help="前回の記事スラッグ")
     args = parser.parse_args()
 
     try:
+        # template_pathは__init__で環境変数から取得するため削除
         converter = DiaryConverter(
             model=args.model,
-            template_path=args.template,
             debug=args.debug,
             project_name=args.project_name,
             issue_number=args.issue_number,

@@ -78,13 +78,12 @@ runs:
           echo "Debug mode enabled"
         fi
         
-        # Template path handling
-        TEMPLATE_ARG=() # Initialize as an empty array
+        # Set template path as environment variable
         if [ -n "${{ inputs.template }}" ]; then
-          TEMPLATE_ARG=(--template "${{ inputs.template }}") # Add template arg to array
-          echo "Using template: ${{ inputs.template }}"
+          echo "Setting TEMPLATE_PATH environment variable to: ${{ inputs.template }}"
+          echo "TEMPLATE_PATH=${{ inputs.template }}" >> $GITHUB_ENV
         fi
-        
+
         # Detect project name from source file path
         SOURCE_PATH="${{ inputs.source_file }}"
         PROJECT_NAME="プロジェクト"  # Default value
@@ -155,7 +154,7 @@ runs:
         [ ${#PROJECT_NAME_ARG[@]} -gt 0 ] && PYTHON_ARGS+=("${PROJECT_NAME_ARG[@]}")
         [ ${#ISSUE_NUMBER_ARG[@]} -gt 0 ] && PYTHON_ARGS+=("${ISSUE_NUMBER_ARG[@]}")
         [ ${#PREV_ARTICLE_ARG[@]} -gt 0 ] && PYTHON_ARGS+=("${PREV_ARTICLE_ARG[@]}")
-        [ ${#TEMPLATE_ARG[@]} -gt 0 ] && PYTHON_ARGS+=("${TEMPLATE_ARG[@]}")
+        # Template argument is now passed via environment variable
 
         echo "Executing Python script with arguments:"
         echo "${PYTHON_ARGS[@]}"
@@ -163,6 +162,8 @@ runs:
         # Execute Python script directly with array expansion
         PYTHONPATH=${{ github.action_path }}/src python -m diary_converter.diary_converter "${PYTHON_ARGS[@]}"
       shell: bash
+      env:
+        TEMPLATE_PATH: ${{ env.TEMPLATE_PATH }} # Pass the env var to the script step
 
     - name: Process Generated Document
       run: |
