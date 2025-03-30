@@ -79,18 +79,11 @@ runs:
         fi
         
         # Template path handling
-        TEMPLATE_ARG=""
+        TEMPLATE_ARG=() # Initialize as an empty array
         if [ -n "${{ inputs.template }}" ]; then
-          if [[ "${{ inputs.template }}" == /* ]]; then
-            # Absolute path
-            TEMPLATE_ARG="--template ${{ inputs.template }}"
-          else
-            # Relative path
-            TEMPLATE_ARG="--template ${{ github.workspace }}/${{ inputs.template }}"
-          fi
-          echo "Using template: $TEMPLATE_ARG"
+          TEMPLATE_ARG=(--template "${{ inputs.template }}") # Add template arg to array
+          echo "Using template: ${{ inputs.template }}"
         fi
-        
         
         # Detect project name from source file path
         SOURCE_PATH="${{ inputs.source_file }}"
@@ -111,7 +104,10 @@ runs:
           PROJECT_NAME="${{ inputs.project_name }}"
         fi
         
-        PROJECT_NAME_ARG="--project-name $PROJECT_NAME"
+        PROJECT_NAME_ARG=() # Initialize as an empty array
+        if [ -n "$PROJECT_NAME" ]; then
+            PROJECT_NAME_ARG=(--project-name "$PROJECT_NAME")
+        fi
         echo "Using project name: $PROJECT_NAME"
         
         # Determine issue number based on existing articles
@@ -128,15 +124,18 @@ runs:
           ISSUE_NUMBER="${{ inputs.issue_number }}"
         fi
         
-        ISSUE_NUMBER_ARG="--issue-number $ISSUE_NUMBER"
+        ISSUE_NUMBER_ARG=() # Initialize as an empty array
+        if [ -n "$ISSUE_NUMBER" ]; then
+            ISSUE_NUMBER_ARG=(--issue-number "$ISSUE_NUMBER")
+        fi
         echo "Using issue number: $ISSUE_NUMBER"
         
         # Previous article slug for related links section
         # Example: If previous article is "2025-03-25-dev-diary.md", use "dev-diary"
-        PREV_ARTICLE_ARG=""
+        PREV_ARTICLE_ARG=() # Initialize as an empty array
         if [ -n "${{ inputs.prev_article }}" ]; then
-          PREV_ARTICLE_ARG="--prev-article ${{ inputs.prev_article }}"
-          echo "Using previous article: $PREV_ARTICLE_ARG"
+          PREV_ARTICLE_ARG=(--prev-article "${{ inputs.prev_article }}")
+          echo "Using previous article: ${{ inputs.prev_article }}"
         fi
         
         # Set API key
@@ -145,12 +144,24 @@ runs:
         echo "Converting ${{ inputs.source_file }} to ${{ inputs.destination_file }}"
         echo "Using model: ${{ inputs.model }}"
         
-        # Run the converter with all parameters
-        PYTHONPATH=${{ github.action_path }}/src python -m diary_converter.diary_converter \
-          "${{ github.workspace }}/${{ inputs.source_file }}" \
-          "${{ github.workspace }}/${{ inputs.destination_file }}" \
-          --model "${{ inputs.model }}" \
-          $DEBUG_FLAG $TEMPLATE_ARG $PROJECT_NAME_ARG $ISSUE_NUMBER_ARG $PREV_ARTICLE_ARG
+        # Prepare arguments for Python script using bash array
+        PYTHON_ARGS=(
+          "${{ github.workspace }}/${{ inputs.source_file }}"
+          "${{ github.workspace }}/${{ inputs.destination_file }}"
+          --model "${{ inputs.model }}"
+        )
+        # Add optional flags/arguments if they exist
+        [ "${{ inputs.debug }}" = "true" ] && PYTHON_ARGS+=(--debug)
+        [ ${#PROJECT_NAME_ARG[@]} -gt 0 ] && PYTHON_ARGS+=("${PROJECT_NAME_ARG[@]}")
+        [ ${#ISSUE_NUMBER_ARG[@]} -gt 0 ] && PYTHON_ARGS+=("${ISSUE_NUMBER_ARG[@]}")
+        [ ${#PREV_ARTICLE_ARG[@]} -gt 0 ] && PYTHON_ARGS+=("${PREV_ARTICLE_ARG[@]}")
+        [ ${#TEMPLATE_ARG[@]} -gt 0 ] && PYTHON_ARGS+=("${TEMPLATE_ARG[@]}")
+
+        echo "Executing Python script with arguments:"
+        echo "${PYTHON_ARGS[@]}"
+
+        # Execute Python script directly with array expansion
+        PYTHONPATH=${{ github.action_path }}/src python -m diary_converter.diary_converter "${PYTHON_ARGS[@]}"
       shell: bash
 
     - name: Process Generated Document
