@@ -47,13 +47,29 @@ class DiaryConverter:
     def read_template(self):
         """テンプレートファイルを読み込む"""
         try:
-            # 相対パスを解決
+            # GitHub Actions環境かどうかを判定
+            github_actions = os.environ.get("GITHUB_ACTIONS") == "true"
+            action_path = os.environ.get("GITHUB_ACTION_PATH")
+
             if not os.path.isabs(self.template_path):
-                # スクリプトの実行ディレクトリからの相対パス
-                script_dir = os.path.dirname(os.path.abspath(__file__))
-                template_path = os.path.join(script_dir, self.template_path)
+                if github_actions and action_path:
+                    # GitHub Actions環境で相対パスの場合、アクションのルートからの相対パスとして解決
+                    template_path = os.path.join(action_path, self.template_path)
+                    if self.debug:
+                        print(f"GitHub Actions環境: アクションルートからの相対パスで解決: {template_path}")
+                else:
+                    # ローカル環境など、スクリプトの実行ディレクトリからの相対パス
+                    script_dir = os.path.dirname(os.path.abspath(__file__))
+                    # templatesディレクトリはsrcの一つ上の階層にある想定
+                    base_dir = os.path.dirname(script_dir)
+                    template_path = os.path.join(base_dir, self.template_path)
+                    if self.debug:
+                        print(f"ローカル環境: スクリプトベースからの相対パスで解決: {template_path}")
             else:
+                # 絶対パスの場合はそのまま使用
                 template_path = self.template_path
+                if self.debug:
+                    print(f"絶対パスとして解決: {template_path}")
 
             # テンプレートファイルの存在確認
             if not os.path.exists(template_path):
@@ -61,6 +77,8 @@ class DiaryConverter:
                     print(f"テンプレートファイル '{template_path}' が見つかりません")
                     print(f"カレントディレクトリ: {os.getcwd()}")
                     print(f"スクリプトディレクトリ: {os.path.dirname(os.path.abspath(__file__))}")
+                    if github_actions:
+                        print(f"GITHUB_ACTION_PATH: {action_path}")
                 raise FileNotFoundError(f"テンプレートファイル '{template_path}' が見つかりません")
 
             with open(template_path, 'r', encoding='utf-8') as file:
