@@ -30,8 +30,7 @@ inputs:
     default: 'gemini-2.0-flash-001'
   template:
     description: 'Template file path'
-    required: false
-    default: './templates/zenn_template.md'
+    required: true
   debug:
     description: 'Enable debug mode'
     required: false
