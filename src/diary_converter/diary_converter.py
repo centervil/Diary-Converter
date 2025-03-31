@@ -18,11 +18,11 @@ class DiaryConverter:
     """開発日記をZenn公開用の記事に変換するクラス"""
 
     def __init__(self, model="gemini-2.0-flash-001", 
-                 debug=False, project_name=None, issue_number=None, prev_article_slug=None):
+                 debug=False, project_name=None, issue_number=None, prev_article_slug=None, template_path=None):
         """初期化"""
         self.model_name = model
-        # 環境変数からテンプレートパスを取得、なければデフォルト値
-        self.template_path = os.environ.get("TEMPLATE_PATH", "./templates/zenn_template.md") 
+        # template_path引数が指定されていれば使用し、なければ環境変数から取得、それもなければデフォルト値
+        self.template_path = template_path or os.environ.get("TEMPLATE_PATH", "./templates/zenn_template.md") 
         self.debug = debug
         self.project_name = project_name  # プロジェクト名
         self.issue_number = issue_number  # 連番（Issue番号）
@@ -53,11 +53,19 @@ class DiaryConverter:
             action_path = os.environ.get("GITHUB_ACTION_PATH")
 
             if not os.path.isabs(self.template_path):
+                # Docker環境かどうかを判定（/appディレクトリの存在で簡易判定）
+                is_docker = os.path.exists('/app') and os.path.isdir('/app')
+                
                 if github_actions and action_path:
                     # GitHub Actions環境で相対パスの場合、アクションのルートからの相対パスとして解決
                     template_path = os.path.join(action_path, self.template_path)
                     if self.debug:
                         print(f"GitHub Actions環境: アクションルートからの相対パスで解決: {template_path}")
+                elif is_docker:
+                    # Docker環境の場合、/appからの相対パスとして解決
+                    template_path = os.path.join('/app', self.template_path)
+                    if self.debug:
+                        print(f"Docker環境: /appからの相対パスで解決: {template_path}")
                 else:
                     # ローカル環境など、スクリプトの実行ディレクトリからの相対パス
                     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -397,22 +405,22 @@ def main():
     parser.add_argument("destination", help="変換先のZenn記事ファイルパス")
     parser.add_argument("--model", default="gemini-2.0-flash-001", help="使用するGeminiモデル名")
     parser.add_argument("--debug", action="store_true", help="デバッグモードを有効にする")
-    # template引数は環境変数経由で渡すため削除
-    # parser.add_argument("--template", default="./templates/zenn_template.md", help="使用するテンプレートファイルのパス") 
+    parser.add_argument("--template", default="./templates/zenn_template.md", help="使用するテンプレートファイルのパス")
     parser.add_argument("--project-name", default="", help="プロジェクト名")
     parser.add_argument("--issue-number", default="", help="連番（Issue番号）")
     parser.add_argument("--prev-article", default="", help="前回の記事スラッグ")
     args = parser.parse_args()
 
+    converter = DiaryConverter(
+        model=args.model,
+        debug=args.debug,
+        template_path=args.template,
+        project_name=args.project_name,
+        issue_number=args.issue_number,
+        prev_article_slug=args.prev_article
+    )
+
     try:
-        # template_pathは__init__で環境変数から取得するため削除
-        converter = DiaryConverter(
-            model=args.model,
-            debug=args.debug,
-            project_name=args.project_name,
-            issue_number=args.issue_number,
-            prev_article_slug=args.prev_article
-        )
         converter.convert(args.source, args.destination)
     except Exception as e:
         print(f"エラー: {e}")

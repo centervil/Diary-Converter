@@ -1,8 +1,8 @@
 #!/bin/bash
 set -e
 
-# 現在のディレクトリをスクリプトのディレクトリに変更
-cd "$(dirname "$0")"
+# プロジェクトのルートディレクトリに移動
+cd "$(dirname "$0")/../.."
 
 # APIキーが設定されているか確認
 if [ -z "$GOOGLE_API_KEY" ]; then
@@ -10,18 +10,28 @@ if [ -z "$GOOGLE_API_KEY" ]; then
   exit 1
 fi
 
-# テスト用の入力ファイルと出力ファイルのパスを設定
-INPUT_FILE="test_input.md"
-OUTPUT_FILE="output/test_output.md"
-TEMPLATE_FILE="test_template.md"
+echo "Docker環境でのテストを開始します..."
 
-echo "テストを開始します..."
+# イメージをビルド
+echo "イメージをビルドしています..."
+docker-compose build diary-converter
+
+# テスト用の入力ファイルと出力ファイルのパスを設定
+# Dockerコンテナ内のパスに合わせて変更
+INPUT_FILE="tests/fixtures/test_input.md"
+OUTPUT_FILE="tests/output/docker_test_output.md"
+TEMPLATE_FILE="tests/fixtures/test_template.md"
+
 echo "入力ファイル: $INPUT_FILE"
 echo "出力ファイル: $OUTPUT_FILE"
 echo "テンプレートファイル: $TEMPLATE_FILE"
 
-# diary_converter.pyを実行
-python ../diary_converter.py "$INPUT_FILE" "$OUTPUT_FILE" --debug --template "$TEMPLATE_FILE"
+# 出力ディレクトリが存在することを確認
+mkdir -p "$(dirname "$OUTPUT_FILE")"
+
+# コンテナを実行
+echo "コンテナを実行しています..."
+docker-compose run diary-converter "$INPUT_FILE" "$OUTPUT_FILE" --debug --template "$TEMPLATE_FILE"
 
 # 出力ファイルが生成されたか確認
 if [ -f "$OUTPUT_FILE" ]; then
@@ -35,4 +45,4 @@ else
   exit 1
 fi
 
-echo "テストが完了しました" 
+echo "Docker環境でのテストが完了しました"

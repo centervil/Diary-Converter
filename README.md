@@ -72,12 +72,18 @@ Diary-Converter/
 │   └── api/              # APIドキュメント
 ├── src/
 │   └── diary_converter/  # メインのPythonコード
-├── tests/                # テストコード
+├── tests/
+│   ├── fixtures/         # テスト用のフィクスチャ（入力ファイルやテンプレートなど）
+│   ├── integration/      # 統合テスト
+│   ├── output/           # テスト出力ディレクトリ
+│   ├── scripts/          # テスト実行スクリプト
+│   └── unit/             # ユニットテスト
 ├── templates/            # テンプレートファイル
-├── input/               # 入力ファイル用ディレクトリ
-├── output/              # 出力ファイル用ディレクトリ
+├── input/                # 入力ファイル用ディレクトリ
+├── output/               # 出力ファイル用ディレクトリ
 ├── Dockerfile
 ├── docker-compose.yml
+├── docker-entrypoint.sh
 ├── requirements.txt
 ├── README.md
 └── LICENSE
@@ -85,20 +91,55 @@ Diary-Converter/
 
 ## テスト
 
+テストは以下の3種類があります：
+
 ### ユニットテスト
 
 ```bash
-cd tests
-python -m unittest test_diary_converter.py -v
+cd Diary-Converter
+tests/scripts/run_unit_tests.sh
+```
+
+または
+
+```bash
+cd Diary-Converter
+python -m unittest discover -s tests/unit
 ```
 
 ### 統合テスト
 
 ```bash
-cd tests
-./run_test.sh
+cd Diary-Converter
+tests/scripts/run_integration_tests.sh
 ```
+
+または
+
+```bash
+cd Diary-Converter
+python -m unittest discover -s tests/integration
+```
+
+### Dockerテスト
+
+```bash
+cd Diary-Converter
+tests/scripts/run_docker_tests.sh
+```
+
+### すべてのテストを実行
+
+```bash
+cd Diary-Converter
+tests/scripts/run_all_tests.sh
+```
+
+### CI/CDパイプライン
+
+GitHub Actionsを使用して、プッシュやプルリクエスト時に自動的にテストが実行されます。
+詳細は `.github/workflows/test.yml` を参照してください。
 
 ## ライセンス
 
-MIT License 
+MIT License

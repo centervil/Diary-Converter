@@ -10,10 +10,11 @@ from diary_converter.diary_converter import DiaryConverter
 class TestDiaryConverter(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures before each test method."""
-        self.test_dir = Path(__file__).parent
-        self.input_file = self.test_dir / "test_input.md"
+        self.test_dir = Path(__file__).parent.parent  # tests/ ディレクトリ
+        self.fixtures_dir = self.test_dir / "fixtures"
+        self.input_file = self.fixtures_dir / "test_input.md"
         self.output_file = self.test_dir / "output" / "test_output.md"
-        self.template_file = self.test_dir / "test_template.md"
+        self.template_file = self.fixtures_dir / "test_template.md"
         
         # Create output directory if it doesn't exist
         self.output_file.parent.mkdir(exist_ok=True)
@@ -49,4 +50,4 @@ class TestDiaryConverter(unittest.TestCase):
             self.output_file.unlink()
 
 if __name__ == '__main__':
-    unittest.main() 
+    unittest.main()

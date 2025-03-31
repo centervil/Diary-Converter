@@ -35,4 +35,4 @@
 
 ## まとめ
 
-diary_converter.pyの動作確認のためのDocker環境を構築しました。Dockerfileとdocker-compose.ymlを作成し、必要なボリュームマウントを設定しました。これにより、開発日記をZenn公開用の記事に変換する作業が効率化されます。 
+diary_converter.pyの動作確認のためのDocker環境を構築しました。Dockerfileとdocker-compose.ymlを作成し、必要なボリュームマウントを設定しました。これにより、開発日記をZenn公開用の記事に変換する作業が効率化されます。

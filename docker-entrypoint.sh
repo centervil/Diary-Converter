@@ -19,5 +19,14 @@ INPUT_FILE="$1"
 OUTPUT_FILE="$2"
 shift 2
 
+# Pythonパスを設定
+export PYTHONPATH=/app/src:$PYTHONPATH
+
+# モジュールの存在を確認
+echo "Pythonモジュールの確認:"
+python -c "import sys; print(sys.path)"
+python -c "import os; print(os.listdir('/app/src'))"
+
 # 残りの引数をそのまま渡す
-python -m diary_converter.diary_converter "$INPUT_FILE" "$OUTPUT_FILE" "$@"
+cd /app
+python -m src.diary_converter.diary_converter "$INPUT_FILE" "$OUTPUT_FILE" "$@"
