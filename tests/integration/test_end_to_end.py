@@ -15,8 +15,9 @@ class TestEndToEnd(unittest.TestCase):
         self.fixtures_dir = self.test_dir / "fixtures"
         self.input_file = self.fixtures_dir / "test_input.md"
         self.output_file = self.test_dir / "output" / "integration_test_output.md"
-        self.template_file = self.fixtures_dir / "test_template.md"
-        
+        # Use the actual template file from the templates directory
+        self.template_file = self.project_root / "templates" / "zenn_template.md"
+
         # Create output directory if it doesn't exist
         self.output_file.parent.mkdir(exist_ok=True)
         

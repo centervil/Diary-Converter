@@ -91,37 +91,23 @@ Diary-Converter/
 
 ## テスト
 
-テストは以下の3種類があります：
+すべてのテストはDocker環境で実行されます。以下のコマンドでテストを実行できます：
 
-### ユニットテスト
-
-```bash
-cd Diary-Converter
-tests/scripts/run_unit_tests.sh
-```
-
-または
+### Docker環境でのユニットテスト
 
 ```bash
 cd Diary-Converter
-python -m unittest discover -s tests/unit
+tests/scripts/run_docker_unit_tests.sh
 ```
 
-### 統合テスト
+### Docker環境での統合テスト
 
 ```bash
 cd Diary-Converter
-tests/scripts/run_integration_tests.sh
+tests/scripts/run_docker_integration_tests.sh
 ```
 
-または
-
-```bash
-cd Diary-Converter
-python -m unittest discover -s tests/integration
-```
-
-### Dockerテスト
+### Docker環境での機能テスト
 
 ```bash
 cd Diary-Converter
@@ -134,6 +120,8 @@ tests/scripts/run_docker_tests.sh
 cd Diary-Converter
 tests/scripts/run_all_tests.sh
 ```
+
+注意: すべてのテストを実行するには、Docker環境が必要です。また、`GOOGLE_API_KEY`環境変数が設定されている必要があります。
 
 ### CI/CDパイプライン
 

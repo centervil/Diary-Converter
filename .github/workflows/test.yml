@@ -1,4 +1,4 @@
-name: Run Tests
+name: Run Unit Tests (Docker)
 
 on:
   push:
@@ -13,39 +13,19 @@ jobs:
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v3
-      
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.10'
-        
-    - name: Install dependencies
+      uses: actions/checkout@v4 # Use latest checkout action
+
+    # Docker Composeが必要なのでセットアップ (Docker自体は ubuntu-latest に含まれる)
+    - name: Set up Docker Compose
       run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        
-    - name: Create output directory
-      run: mkdir -p tests/output
-      
-    - name: Run unit tests
-      run: |
-        python -m unittest discover -s tests/unit
-      env:
-        GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
-        
-    - name: Run integration tests
-      run: |
-        python -m unittest discover -s tests/integration
-      env:
-        GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
-        
-    - name: Build Docker image
-      run: docker-compose build diary-converter
-      
-    - name: Run Docker tests
+        sudo apt-get update
+        sudo apt-get install -y docker-compose
+
+    - name: Run Docker Unit Tests
+      # run_docker_unit_tests.sh は内部でダミーAPIキーを設定するが、
+      # スクリプトの最初のAPIキー存在チェックのために secrets.GOOGLE_API_KEY を渡す
       env:
         GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
       run: |
-        chmod +x tests/scripts/run_docker_tests.sh
-        tests/scripts/run_docker_tests.sh
+        chmod +x tests/scripts/run_docker_unit_tests.sh
+        tests/scripts/run_docker_unit_tests.sh

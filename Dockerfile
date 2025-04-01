@@ -17,7 +17,7 @@ RUN chmod +x /app/docker-entrypoint.sh
 
 # 環境変数の設定
 ENV PYTHONUNBUFFERED=1
-ENV PYTHONPATH=/app
+ENV PYTHONPATH=/app/src
 
 # 作業ディレクトリの設定
 WORKDIR /app

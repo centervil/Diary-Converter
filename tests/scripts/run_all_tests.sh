@@ -1,33 +1,26 @@
 #!/bin/bash
 set -e
 
-# 現在のディレクトリをスクリプトのディレクトリに変更
-cd "$(dirname "$0")"
-
-# APIキーが設定されているか確認
-if [ -z "$GOOGLE_API_KEY" ]; then
-  echo "エラー: GOOGLE_API_KEY 環境変数が設定されていません"
-  exit 1
-fi
-
-echo "すべてのテストを実行します..."
+echo "Docker環境で全てのテストを実行します..."
 
 # ユニットテストを実行
-echo "=== ユニットテストを実行します ==="
-./run_unit_tests.sh
-echo "=== ユニットテストが完了しました ==="
-echo
+echo ""
+echo "=== Docker環境でユニットテストを実行します ==="
+bash tests/scripts/run_docker_unit_tests.sh
+echo "=== Docker環境でユニットテストが完了しました ==="
+echo ""
 
-# 統合テストを実行
-echo "=== 統合テストを実行します ==="
-./run_integration_tests.sh
-echo "=== 統合テストが完了しました ==="
-echo
+# エンドツーエンドテスト (旧 統合テスト) を実行
+echo "=== Docker環境でエンドツーエンドテストを実行します ==="
+echo "イメージをビルドしています (キャッシュ利用)..."
+# ビルドはユニットテストで実行済みのはずだが念のため
+docker-compose build diary-converter
 
-# Dockerテストを実行
-echo "=== Dockerテストを実行します ==="
-./run_docker_tests.sh
-echo "=== Dockerテストが完了しました ==="
-echo
+echo "E2Eテストを実行しています..."
+# docker-compose run を使ってコンテナ内で unittest を実行
+docker-compose run --rm diary-converter python -m unittest discover -s tests/integration
+
+echo "=== Docker環境でエンドツーエンドテストが完了しました ==="
+echo ""
 
 echo "すべてのテストが正常に完了しました！"
