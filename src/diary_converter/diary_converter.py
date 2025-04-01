@@ -14,80 +14,64 @@ import google.generativeai as genai
 from datetime import datetime
 import re
 
-class DiaryConverter:
-    """開発日記をZenn公開用の記事に変換するクラス"""
-
-    def __init__(self, model="gemini-2.0-flash-001", 
-                 debug=False, project_name=None, issue_number=None, prev_article_slug=None, template_path=None):
+class TemplateManager:
+    """テンプレート管理クラス"""
+    
+    def __init__(self, template_path, debug=False):
         """初期化"""
-        self.model_name = model
-        # template_path引数が指定されていれば使用し、なければ環境変数から取得、それもなければデフォルト値
-        self.template_path = template_path or os.environ.get("TEMPLATE_PATH", "./templates/zenn_template.md") 
+        self.template_path = template_path
         self.debug = debug
-        self.project_name = project_name  # プロジェクト名
-        self.issue_number = issue_number  # 連番（Issue番号）
-        self.prev_article_slug = prev_article_slug  # 前回の記事スラッグ
-        self.setup_api()
+        
+    def resolve_template_path(self):
+        """テンプレートパスを解決する"""
+        # GitHub Actions環境かどうかを判定
+        github_actions = os.environ.get("GITHUB_ACTIONS") == "true"
+        action_path = os.environ.get("GITHUB_ACTION_PATH")
 
-    def setup_api(self):
-        """Gemini APIの設定"""
-        api_key = os.environ.get("GOOGLE_API_KEY")
-        if not api_key:
-            raise ValueError("GOOGLE_API_KEY 環境変数が設定されていません")
-        genai.configure(api_key=api_key)
-
-    def read_source_diary(self, file_path):
-        """開発日記ファイルを読み込む"""
-        try:
-            with open(file_path, 'r', encoding='utf-8') as file:
-                content = file.read()
-            return content
-        except Exception as e:
-            raise IOError(f"ファイル読み込み中にエラーが発生しました: {e}")
-
-    def read_template(self):
+        if not os.path.isabs(self.template_path):
+            # Docker環境かどうかを判定（/appディレクトリの存在で簡易判定）
+            is_docker = os.path.exists('/app') and os.path.isdir('/app')
+            
+            if github_actions and action_path:
+                # GitHub Actions環境で相対パスの場合、アクションのルートからの相対パスとして解決
+                template_path = os.path.join(action_path, self.template_path)
+                if self.debug:
+                    print(f"GitHub Actions環境: アクションルートからの相対パスで解決: {template_path}")
+            elif is_docker:
+                # Docker環境の場合、/appからの相対パスとして解決
+                template_path = os.path.join('/app', self.template_path)
+                if self.debug:
+                    print(f"Docker環境: /appからの相対パスで解決: {template_path}")
+            else:
+                # ローカル環境など、スクリプトの実行ディレクトリからの相対パス
+                script_dir = os.path.dirname(os.path.abspath(__file__))
+                # templatesディレクトリはsrcの一つ上の階層にある想定
+                base_dir = os.path.dirname(script_dir)
+                template_path = os.path.join(base_dir, self.template_path)
+                if self.debug:
+                    print(f"ローカル環境: スクリプトベースからの相対パスで解決: {template_path}")
+        else:
+            # 絶対パスの場合はそのまま使用
+            template_path = self.template_path
+            if self.debug:
+                print(f"絶対パスとして解決: {template_path}")
+        
+        return template_path
+            
+    def load_template(self):
         """テンプレートファイルを読み込む"""
         try:
-            # GitHub Actions環境かどうかを判定
-            github_actions = os.environ.get("GITHUB_ACTIONS") == "true"
-            action_path = os.environ.get("GITHUB_ACTION_PATH")
-
-            if not os.path.isabs(self.template_path):
-                # Docker環境かどうかを判定（/appディレクトリの存在で簡易判定）
-                is_docker = os.path.exists('/app') and os.path.isdir('/app')
-                
-                if github_actions and action_path:
-                    # GitHub Actions環境で相対パスの場合、アクションのルートからの相対パスとして解決
-                    template_path = os.path.join(action_path, self.template_path)
-                    if self.debug:
-                        print(f"GitHub Actions環境: アクションルートからの相対パスで解決: {template_path}")
-                elif is_docker:
-                    # Docker環境の場合、/appからの相対パスとして解決
-                    template_path = os.path.join('/app', self.template_path)
-                    if self.debug:
-                        print(f"Docker環境: /appからの相対パスで解決: {template_path}")
-                else:
-                    # ローカル環境など、スクリプトの実行ディレクトリからの相対パス
-                    script_dir = os.path.dirname(os.path.abspath(__file__))
-                    # templatesディレクトリはsrcの一つ上の階層にある想定
-                    base_dir = os.path.dirname(script_dir)
-                    template_path = os.path.join(base_dir, self.template_path)
-                    if self.debug:
-                        print(f"ローカル環境: スクリプトベースからの相対パスで解決: {template_path}")
-            else:
-                # 絶対パスの場合はそのまま使用
-                template_path = self.template_path
-                if self.debug:
-                    print(f"絶対パスとして解決: {template_path}")
-
+            template_path = self.resolve_template_path()
+            
             # テンプレートファイルの存在確認
             if not os.path.exists(template_path):
                 if self.debug:
                     print(f"テンプレートファイル '{template_path}' が見つかりません")
                     print(f"カレントディレクトリ: {os.getcwd()}")
                     print(f"スクリプトディレクトリ: {os.path.dirname(os.path.abspath(__file__))}")
+                    github_actions = os.environ.get("GITHUB_ACTIONS") == "true"
                     if github_actions:
-                        print(f"GITHUB_ACTION_PATH: {action_path}")
+                        print(f"GITHUB_ACTION_PATH: {os.environ.get('GITHUB_ACTION_PATH')}")
                 raise FileNotFoundError(f"テンプレートファイル '{template_path}' が見つかりません")
 
             with open(template_path, 'r', encoding='utf-8') as file:
@@ -95,24 +79,7 @@ class DiaryConverter:
             return content
         except Exception as e:
             raise IOError(f"テンプレートファイル読み込み中にエラーが発生しました: {e}")
-
-    def extract_date_from_filename(self, file_path):
-        """ファイル名から日付を抽出する"""
-        filename = os.path.basename(file_path)
-        date_match = re.search(r'(\d{4}-\d{2}-\d{2})', filename)
-        if date_match:
-            return date_match.group(1)
-        return datetime.now().strftime("%Y-%m-%d")
-
-    def extract_theme_from_filename(self, file_path):
-        """ファイル名からテーマを抽出する"""
-        filename = os.path.basename(file_path)
-        # 日付部分を除去
-        theme_part = re.sub(r'\d{4}-\d{2}-\d{2}-', '', filename)
-        # 拡張子を除去
-        theme = os.path.splitext(theme_part)[0]
-        return theme
-
+            
     def extract_template_sections(self, template_content):
         """テンプレートから各セクションを抽出する"""
         # frontmatterを抽出
@@ -186,27 +153,9 @@ class DiaryConverter:
             "conversion_process": conversion_process,
             "template_structure": template_structure
         }
-
-    def generate_prompt(self, content, date, theme, cycle_article_link="", template_content=None):
-        """Gemini APIに送信するプロンプトを生成する"""
-        if not template_content:
-            raise ValueError("テンプレート内容が提供されていません")
-
-        # テンプレートから各セクションを抽出
-        template_sections = self.extract_template_sections(template_content)
-        template_fm = template_sections["frontmatter"]
-        guidelines = template_sections["guidelines"]
-        template_structure = template_sections["template_structure"]
         
-        # テーマ名を設定
-        theme_name = theme.replace("-", " ").title()
-        
-        # プロジェクト名とIssue番号を設定
-        project_name = self.project_name or "プロジェクト"
-        issue_number = self.issue_number or "1"
-        
-        # frontmatterテンプレート
-        # テンプレートのfrontmatterを基に、動的な値を置換
+    def generate_frontmatter(self, template_fm, theme_name, issue_number):
+        """frontmatterを生成する"""
         title_template = template_fm.get("title", "[テーマ名]（開発日記 #[連番]）")
         title = title_template.replace("[テーマ名]", theme_name) \
                              .replace("[連番]", issue_number)
@@ -218,33 +167,25 @@ type: "{template_fm.get('type', 'tech')}"
 topics: {template_fm.get('topics', ['開発日記', 'プログラミング'])}
 published: {str(template_fm.get('published', False)).lower()}
 ---"""
-
-        # LLMモデル名を設定
-        llm_model_info = f"この記事は{self.model_name}によって自動生成されています。"
-
-        # メッセージボックステンプレート
-        # テンプレートのメッセージボックスがあれば使用し、なければ新規作成
-        if template_sections["message_box"]:
-            message_box_template = template_sections["message_box"] \
-                .replace("[LLM Model名]", self.model_name)
+        return frontmatter_template
+        
+    def generate_message_box(self, template_message_box, model_name):
+        """メッセージボックスを生成する"""
+        if template_message_box:
+            return template_message_box.replace("[LLM Model名]", model_name)
         else:
-            message_box_template = f""":::message
-{llm_model_info}
+            return f""":::message
+この記事は{model_name}によって自動生成されています。
 :::"""
-
-        # 関連リンクセクションテンプレート
-        # テンプレートの関連リンクセクションがあれば使用し、なければ新規作成
-        if template_sections["related_links"]:
-            repo_name = self.project_name or "[リポジトリ名]"
-            repo_link = f"https://github.com/centervil/{repo_name}"
             
-            # 前回の記事リンクの自動生成
-            prev_article_link = f"https://zenn.dev/centervil/articles/{self.prev_article_slug}" if self.prev_article_slug else "https://zenn.dev/centervil/articles/[前回の記事スラッグ]"
-            
-            # 関連IssueのURL
-            issue_url = f"https://github.com/centervil/{repo_name}/issues/{issue_number}"
-            
-            related_links_section = template_sections["related_links"] \
+    def generate_related_links(self, template_related_links, project_name, repo_name, issue_number, prev_article_slug):
+        """関連リンクセクションを生成する"""
+        repo_link = f"https://github.com/centervil/{repo_name}"
+        prev_article_link = f"https://zenn.dev/centervil/articles/{prev_article_slug}" if prev_article_slug else "https://zenn.dev/centervil/articles/[前回の記事スラッグ]"
+        issue_url = f"https://github.com/centervil/{repo_name}/issues/{issue_number}"
+        
+        if template_related_links:
+            related_links = template_related_links \
                 .replace("[プロジェクト名]", project_name) \
                 .replace("[リポジトリ名]", repo_name) \
                 .replace("https://github.com/centervil/[リポジトリ名]", repo_link) \
@@ -252,24 +193,104 @@ published: {str(template_fm.get('published', False)).lower()}
                 .replace("https://github.com/centervil/[リポジトリ名]/issues/[Issue番号]", issue_url)
             
             # 前回の記事リンクの置換
-            if self.prev_article_slug:
-                related_links_section = re.sub(
+            if prev_article_slug:
+                related_links = re.sub(
                     r'https://zenn.dev/centervil/articles/\[前回の記事スラッグ\]', 
                     prev_article_link, 
-                    related_links_section
+                    related_links
                 )
+            return related_links
         else:
-            repo_name = self.project_name or "[リポジトリ名]"
-            repo_link = f"https://github.com/centervil/{repo_name}"
-            prev_article_link = f"https://zenn.dev/centervil/articles/{self.prev_article_slug}" if self.prev_article_slug else "https://zenn.dev/centervil/articles/[前回の記事スラッグ]"
-            issue_url = f"https://github.com/centervil/{repo_name}/issues/{issue_number}"
-            
-            related_links_section = f"""## 関連リンク
+            return f"""## 関連リンク
 
 - **プロジェクトリポジトリ**: [{project_name}]({repo_link})
 - **前回の開発日記**: [前回の開発日記]({prev_article_link})
 - **関連Issue**: [Issue #{issue_number}]({issue_url})
 """
+
+class DiaryConverter:
+    """開発日記をZenn公開用の記事に変換するクラス"""
+
+    def __init__(self, model="gemini-2.0-flash-001", 
+                 debug=False, project_name=None, issue_number=None, prev_article_slug=None, template_path=None):
+        """初期化"""
+        self.model_name = model
+        # template_path引数が指定されていれば使用し、なければ環境変数から取得、それもなければデフォルト値
+        template_path = template_path or os.environ.get("TEMPLATE_PATH", "./templates/zenn_template.md")
+        self.template_manager = TemplateManager(template_path, debug)
+        self.debug = debug
+        self.project_name = project_name  # プロジェクト名
+        self.issue_number = issue_number  # 連番（Issue番号）
+        self.prev_article_slug = prev_article_slug  # 前回の記事スラッグ
+        self.setup_api()
+
+    def setup_api(self):
+        """Gemini APIの設定"""
+        api_key = os.environ.get("GOOGLE_API_KEY")
+        if not api_key:
+            raise ValueError("GOOGLE_API_KEY 環境変数が設定されていません")
+        genai.configure(api_key=api_key)
+
+    def read_source_diary(self, file_path):
+        """開発日記ファイルを読み込む"""
+        try:
+            with open(file_path, 'r', encoding='utf-8') as file:
+                content = file.read()
+            return content
+        except Exception as e:
+            raise IOError(f"ファイル読み込み中にエラーが発生しました: {e}")
+
+    def extract_date_from_filename(self, file_path):
+        """ファイル名から日付を抽出する"""
+        filename = os.path.basename(file_path)
+        date_match = re.search(r'(\d{4}-\d{2}-\d{2})', filename)
+        if date_match:
+            return date_match.group(1)
+        return datetime.now().strftime("%Y-%m-%d")
+
+    def extract_theme_from_filename(self, file_path):
+        """ファイル名からテーマを抽出する"""
+        filename = os.path.basename(file_path)
+        # 日付部分を除去
+        theme_part = re.sub(r'\d{4}-\d{2}-\d{2}-', '', filename)
+        # 拡張子を除去
+        theme = os.path.splitext(theme_part)[0]
+        return theme
+
+    def generate_prompt(self, content, date, theme, cycle_article_link="", template_content=None):
+        """Gemini APIに送信するプロンプトを生成する"""
+        if not template_content:
+            raise ValueError("テンプレート内容が提供されていません")
+
+        # テンプレートから各セクションを抽出
+        template_sections = self.template_manager.extract_template_sections(template_content)
+        template_fm = template_sections["frontmatter"]
+        guidelines = template_sections["guidelines"]
+        template_structure = template_sections["template_structure"]
+        
+        # テーマ名を設定
+        theme_name = theme.replace("-", " ").title()
+        
+        # プロジェクト名とIssue番号を設定
+        project_name = self.project_name or "プロジェクト"
+        issue_number = self.issue_number or "1"
+        
+        # frontmatterテンプレート生成
+        frontmatter_template = self.template_manager.generate_frontmatter(
+            template_fm, theme_name, issue_number
+        )
+
+        # メッセージボックステンプレート生成
+        message_box_template = self.template_manager.generate_message_box(
+            template_sections["message_box"], self.model_name
+        )
+
+        # 関連リンクセクションテンプレート生成
+        repo_name = self.project_name or "[リポジトリ名]"
+        related_links_section = self.template_manager.generate_related_links(
+            template_sections["related_links"], project_name, repo_name, 
+            issue_number, self.prev_article_slug
+        )
 
         prompt = f"""以下の開発日記を、Zenn公開用の記事に変換してください。
 
@@ -378,7 +399,7 @@ frontmatterを含むマークダウン形式の完全な記事を出力してく
             content = self.read_source_diary(source_file)
 
             # テンプレートを読み込む
-            template_content = self.read_template()
+            template_content = self.template_manager.load_template()
 
             # ファイル名から日付とテーマを抽出
             date = self.extract_date_from_filename(source_file)
