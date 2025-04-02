@@ -13,7 +13,11 @@ class TestEndToEnd(unittest.TestCase):
         self.project_root = Path(__file__).parent.parent.parent  # Diary-Converter/ ディレクトリ
         self.test_dir = Path(__file__).parent.parent  # tests/ ディレクトリ
         self.fixtures_dir = self.test_dir / "fixtures"
-        self.input_file = self.fixtures_dir / "test_input.md"
+        # Use the actual file in the fixtures directory
+        fixture_files = list(self.fixtures_dir.glob("*.md"))
+        if not fixture_files:
+            raise FileNotFoundError(f"No markdown files found in {self.fixtures_dir}")
+        self.input_file = fixture_files[0] # Use the first markdown file found
         self.output_file = self.test_dir / "output" / "integration_test_output.md"
         # Use the actual template file from the templates directory
         self.template_file = self.project_root / "templates" / "zenn_template.md"

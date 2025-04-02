@@ -80,34 +80,16 @@ class TemplateManager:
         except Exception as e:
             raise IOError(f"テンプレートファイル読み込み中にエラーが発生しました: {e}")
     
-    def prepare_template(self, template_content, model_name, theme_name, project_name, repo_name, issue_number, prev_article_slug):
+    def prepare_template(self, template_content, model_name, serial_number, prev_article_slug):
         """テンプレートを準備する（プレースホルダーを置換する）"""
         # テンプレートのプレースホルダーを置換
         prepared_template = template_content
-        
+
         # モデル名の置換
         prepared_template = prepared_template.replace("[LLM Model名]", model_name)
-        
-        # テーマ名の置換
-        prepared_template = prepared_template.replace("[テーマ名]", theme_name)
-        
-        # 連番（Issue番号）の置換
-        prepared_template = prepared_template.replace("[連番]", issue_number)
-        
-        # プロジェクト名の置換
-        prepared_template = prepared_template.replace("[プロジェクト名]", project_name)
-        
-        # リポジトリ名の置換
-        prepared_template = prepared_template.replace("[リポジトリ名]", repo_name)
-        
-        # リポジトリURLの置換
-        repo_link = f"https://github.com/centervil/{repo_name}"
-        prepared_template = prepared_template.replace("https://github.com/centervil/[リポジトリ名]", repo_link)
-        
-        # Issue URLの置換
-        issue_url = f"https://github.com/centervil/{repo_name}/issues/{issue_number}"
-        prepared_template = prepared_template.replace("https://github.com/centervil/[リポジトリ名]/issues/[Issue番号]", issue_url)
-        prepared_template = prepared_template.replace("[Issue番号]", issue_number)
+
+        # 連番の置換
+        prepared_template = prepared_template.replace("[連番]", serial_number)
         
         # 前回の記事スラッグの置換
         if prev_article_slug:
@@ -123,16 +105,14 @@ class TemplateManager:
 class DiaryConverter:
     """開発日記をZenn公開用の記事に変換するクラス"""
 
-    def __init__(self, model="gemini-2.0-flash-001", 
-                 debug=False, project_name=None, issue_number=None, prev_article_slug=None, template_path=None):
+    def __init__(self, model="gemini-2.0-flash-001",
+                 debug=False, prev_article_slug=None, template_path=None):
         """初期化"""
         self.model_name = model
         # template_path引数が指定されていれば使用し、なければ環境変数から取得、それもなければデフォルト値
         template_path = template_path or os.environ.get("TEMPLATE_PATH", "./templates/zenn_template.md")
         self.template_manager = TemplateManager(template_path, debug)
         self.debug = debug
-        self.project_name = project_name  # プロジェクト名
-        self.issue_number = issue_number  # 連番（Issue番号）
         self.prev_article_slug = prev_article_slug  # 前回の記事スラッグ
         self.setup_api()
 
@@ -158,39 +138,18 @@ class DiaryConverter:
         date_match = re.search(r'(\d{4}-\d{2}-\d{2})', filename)
         if date_match:
             return date_match.group(1)
-        return datetime.now().strftime("%Y-%m-%d")
+        # 日付が見つからない場合はNoneを返すなど、エラーハンドリングを検討
+        return None
 
-    def extract_theme_from_filename(self, file_path):
-        """ファイル名からテーマを抽出する"""
+    def extract_serial_number_from_filename(self, file_path):
+        """ファイル名から通し番号を抽出する"""
         filename = os.path.basename(file_path)
-        # 日付部分を除去
-        theme_part = re.sub(r'\d{4}-\d{2}-\d{2}-', '', filename)
-        # 拡張子を除去
-        theme = os.path.splitext(theme_part)[0]
-        # 新しい命名規則 (YYYY-MM-DD-[通し番号]-[テーマ名]-[プロジェクト名].md) からテーマ名を抽出
-        match = re.search(r'\d{4}-\d{2}-\d{2}-\d{3}-(.+?)-(.+)\.md', filename)
+        # 新しい命名規則 (YYYY-MM-DD_{通し番号}_development.md) から通し番号を抽出
+        match = re.search(r'^\d{4}-\d{2}-\d{2}_(\d+)_development\.md$', filename)
         if match:
             return match.group(1)
-        return "unknown-theme" # マッチしない場合のデフォルト値
-
-    def extract_project_name_from_filename(self, file_path):
-        """ファイル名からプロジェクト名を抽出する"""
-        filename = os.path.basename(file_path)
-        # 新しい命名規則 (YYYY-MM-DD-[通し番号]-[テーマ名]-[プロジェクト名].md) からプロジェクト名を抽出
-        match = re.search(r'\d{4}-\d{2}-\d{2}-\d{3}-(.+?)-(.+)\.md', filename)
-        if match:
-            return match.group(2)
-        return "UnknownProject" # マッチしない場合のデフォルト値
-
-    def extract_issue_number_from_filename(self, file_path):
-        """ファイル名から通し番号（Issue番号として使用）を抽出する"""
-        filename = os.path.basename(file_path)
-        # 新しい命名規則 (YYYY-MM-DD-[通し番号]-[テーマ名]-[プロジェクト名].md) から通し番号を抽出
-        match = re.search(r'\d{4}-\d{2}-\d{2}-(\d{3})-.+', filename)
-        if match:
-            # 先頭のゼロを除去して数値として返す（例: "001" -> "1"）
-            return str(int(match.group(1)))
-        return "1" # マッチしない場合のデフォルト値
+        # 通し番号が見つからない場合はNoneを返すなど、エラーハンドリングを検討
+        return None
 
     def generate_prompt(self, content, template_content):
         """Gemini APIに送信するプロンプトを生成する（シンプル化版）"""
@@ -280,27 +239,22 @@ class DiaryConverter:
             # テンプレートを読み込む
             template_content = self.template_manager.load_template()
 
-            # ファイル名から日付とテーマを抽出
+            # ファイル名から日付と通し番号を抽出
             date = self.extract_date_from_filename(source_file)
-            theme = self.extract_theme_from_filename(source_file)
+            serial_number = self.extract_serial_number_from_filename(source_file)
 
-            project_name = self.extract_project_name_from_filename(source_file)
-            issue_number = self.extract_issue_number_from_filename(source_file)
+            if not date or not serial_number:
+                raise ValueError(f"ファイル名から日付または通し番号を抽出できませんでした: {source_file}")
 
             if self.debug:
                 print(f"日付: {date}")
-                print(f"テーマ: {theme}")
-                print(f"プロジェクト名: {project_name}")
-                print(f"Issue番号: {issue_number}")
+                print(f"通し番号: {serial_number}")
 
             # テンプレートを準備（プレースホルダーを置換）
             prepared_template = self.template_manager.prepare_template(
                 template_content,
                 self.model_name,
-                theme.replace("-", " ").title(), # テーマ名を整形
-                project_name,
-                project_name, # リポジトリ名としてプロジェクト名を使用
-                issue_number,
+                serial_number,
                 self.prev_article_slug
             )
 
@@ -327,8 +281,7 @@ def main():
     parser.add_argument("--model", default="gemini-2.0-flash-001", help="使用するGeminiモデル名")
     parser.add_argument("--debug", action="store_true", help="デバッグモードを有効にする")
     parser.add_argument("--template", default="./templates/zenn_template.md", help="使用するテンプレートファイルのパス")
-    parser.add_argument("--project-name", default="", help="プロジェクト名")
-    parser.add_argument("--issue-number", default="", help="連番（Issue番号）")
+    # --project-name と --issue-number は削除
     parser.add_argument("--prev-article", default="", help="前回の記事スラッグ")
     args = parser.parse_args()
 
@@ -336,8 +289,7 @@ def main():
         model=args.model,
         debug=args.debug,
         template_path=args.template,
-        project_name=args.project_name,
-        issue_number=args.issue_number,
+        # project_name と issue_number は削除
         prev_article_slug=args.prev_article
     )
 

@@ -6,7 +6,7 @@ echo "Docker環境で全てのテストを実行します..."
 # ユニットテストを実行
 echo ""
 echo "=== Docker環境でユニットテストを実行します ==="
-bash tests/scripts/run_docker_unit_tests.sh
+bash run_docker_unit_tests.sh
 echo "=== Docker環境でユニットテストが完了しました ==="
 echo ""
 
