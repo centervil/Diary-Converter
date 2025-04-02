@@ -93,12 +93,11 @@ class TemplateManager:
         
         # 前回の記事スラッグの置換
         if prev_article_slug:
-            prev_article_link = f"https://zenn.dev/centervil/articles/{prev_article_slug}"
-            prepared_template = re.sub(
-                r'https://zenn.dev/centervil/articles/\[前回の記事スラッグ\]', 
-                prev_article_link, 
-                prepared_template
-            )
+            # 単純な文字列置換に変更
+            prepared_template = prepared_template.replace("[前回の記事スラッグ]", prev_article_slug)
+        # else:
+            # スラッグがない場合、リンク行全体を削除するか、プレースホルダーを残すか検討が必要
+            # 現状ではプレースホルダーが残る
         
         return prepared_template
 
